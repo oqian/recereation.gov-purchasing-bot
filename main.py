@@ -1,6 +1,5 @@
 # Author: Oliver Qian
 # For personal use only, not for commercial use
-# MIT Licence
 import selenium
 from selenium import webdriver
 from selenium.webdriver.support.ui import Select
@@ -27,6 +26,16 @@ def json_parsing():
     return data
 
 
+def select_time(browser, path: str, found: bool):
+    for time_slot in range(2, 8):
+        path_ = path + f'[{time_slot}]'
+        if browser.find_element_by_xpath(xpath=path_).get_attribute("aria-describedby"):
+            browser.find_element_by_xpath(xpath=path_).click()
+            found = True
+            print(f"slot: {time_slot} found")
+            break
+    return found
+
 
 def make_selection(file: dict):
     browser = webdriver.Chrome(executable_path='./chromedriver.exe')
@@ -40,25 +49,37 @@ def make_selection(file: dict):
     count = 0
     while not found:
         count += 1
-        time.sleep(4)
-        for time_slot in range(2, 8):
-            path = f"/html/body/div[1]/div/div[3]/main/div[3]/div/div[1]/div[1]/div/div[3]/div[1]/div[2]/div/div[3]/div/div/label[{time_slot}]"
-            if browser.find_element_by_xpath(xpath=path).get_attribute("aria-describedby"):
-                browser.find_element_by_xpath(xpath=path).click()
-                found = True
-                print("ticket found")
-                break
+        time.sleep(1)
+        path = f"/html/body/div[1]/div/div[3]/main/div[3]/div/div[1]/div[1]/div/div[3]/div[1]/div[2]/div/div[3]/div/div/label"
+        found = select_time(browser, path, found)
         if not found:
+            # refresh the page and re-input the date
             browser.get('https://www.recreation.gov/timed-entry/10086910/ticket/10086911')
             browser.find_element_by_id("tourCalendarWithKey").send_keys(file['date'])
             print(f"It is the {count} attempt, and no available ticket is found")
+            time.sleep(2)
 
         if count == 5:
             quit()
 
+
     # request tickets
-    browser.find_element_by_xpath(
-        "/html/body/div[1]/div/div[3]/main/div[3]/div/div[1]/div[1]/div/div[3]/div[2]/button").click()
+    # if request button is not available, reselect
+    while True:
+        class_name = browser.find_element_by_xpath(
+            "/html/body/div[1]/div/div[3]/main/div[3]/div/div[1]/div[1]/div/div[3]/div[2]/button").get_attribute("class")
+        if class_name == "sarsa-button sarsa-button-primary sarsa-button-md sarsa-button-fit-container":
+            browser.find_element_by_xpath(
+                "/html/body/div[1]/div/div[3]/main/div[3]/div/div[1]/div[1]/div/div[3]/div[2]/button").click()
+            print("time slot was selected successfully")
+            break
+        else:
+            found = False
+            while not found:
+                found = select_time(browser, path, found)
+                print("re-selecting")
+            break
+
     time.sleep(1)
     while True:
         try:
