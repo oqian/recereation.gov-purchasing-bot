@@ -5,13 +5,14 @@ from selenium import webdriver
 from selenium.webdriver.support.ui import Select
 import time
 import json
+from datetime import datetime
 
 def json_parsing():
     """
     :param file:
     {email: email address,
      password: login password
-     date:MM/DD/YYYY,
+     date: MM/DD/YYYY,
      firstName: firstName,
      lastName: lastName,
      cardNumber: credit card number,
@@ -26,13 +27,21 @@ def json_parsing():
     return data
 
 
+def logging(message: str):
+    with open('logging.txt', 'a+') as f:
+        f.write(str(datetime.now()))
+        f.write("    :" + message)
+        f.write('\n')
+        print(message)
+
+
 def select_time(browser, path: str, found: bool):
     for time_slot in range(2, 8):
         path_ = path + f'[{time_slot}]'
         if browser.find_element_by_xpath(xpath=path_).get_attribute("aria-describedby"):
             browser.find_element_by_xpath(xpath=path_).click()
             found = True
-            print(f"slot: {time_slot} found")
+            logging(f"slot: {time_slot} found")
             break
     return found
 
@@ -56,13 +65,12 @@ def make_selection(file: dict):
             # refresh the page and re-input the date
             browser.get('https://www.recreation.gov/timed-entry/10086910/ticket/10086911')
             browser.find_element_by_id("tourCalendarWithKey").send_keys(file['date'])
-            print(f"It is the {count} attempt, and no available ticket is found")
-            time.sleep(2)
+            logging(f"It is the {count} attempt, and no available ticket is found")
+            time.sleep(4)
 
-        if count == 5:
+        if count == 50:
+            logging("No ticket was found.")
             quit()
-
-
     # request tickets
     # if request button is not available, reselect
     while True:
@@ -71,13 +79,13 @@ def make_selection(file: dict):
         if class_name == "sarsa-button sarsa-button-primary sarsa-button-md sarsa-button-fit-container":
             browser.find_element_by_xpath(
                 "/html/body/div[1]/div/div[3]/main/div[3]/div/div[1]/div[1]/div/div[3]/div[2]/button").click()
-            print("time slot was selected successfully")
+            logging("time slot was selected successfully")
             break
         else:
             found = False
             while not found:
                 found = select_time(browser, path, found)
-                print("re-selecting")
+                logging("re-selecting")
             break
 
     time.sleep(1)
@@ -110,13 +118,13 @@ def make_selection(file: dict):
                 "/html/body/div[1]/div/div[4]/div/div/div/div[1]/div[2]/div[1]/div/div[2]/div[4]/div/input").send_keys(file['securityCode'])
             browser.find_element_by_xpath(
                 "/html/body/div[1]/div/div[4]/div/div/div/div[1]/div[2]/div[1]/div/div[2]/button").click()
-            time.sleep(20)
-            # browser.find_element_by_xpath(
-            #     "/html/body/div[1]/div/div[4]/div/div/div/div[2]/div[2]/div[1]/div[4]/div[3]/button[2]").click()
-            print("Successfully Purchased")
+            time.sleep(10)
+            browser.find_element_by_xpath(
+                "/html/body/div[1]/div/div[4]/div/div/div/div[2]/div[2]/div[1]/div[4]/div[3]/button[2]").click()
+            logging("Successfully Purchased")
             break
         except selenium.common.exceptions.NoSuchElementException:
-            print('not ready yet')
+            logging('not ready yet')
             time.sleep(5)
 
 
